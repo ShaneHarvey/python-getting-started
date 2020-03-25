@@ -1,4 +1,4 @@
-from django.urls import path, include
+from django.conf.urls import url
 
 from django.contrib import admin
 
@@ -15,7 +15,8 @@ import hello.views
 # Learn more here: https://docs.djangoproject.com/en/2.1/topics/http/urls/
 
 urlpatterns = [
-    path("", hello.views.index, name="index"),
-    path("db/", hello.views.db, name="db"),
-    path("admin/", admin.site.urls),
+    url(r"^$", hello.views.index, name="index"),
+    url(r"^db/", hello.views.db, name="db"),
+    url(r"^admin/", admin.site.urls),
+    url(r"^mongodb/", hello.views.mongodb, name="mongodb"),
 ]

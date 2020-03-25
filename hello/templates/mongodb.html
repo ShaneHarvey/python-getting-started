@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block content %}
+  <div class="container">
+
+
+<h2>MongoDB documents</h2>
+
+
+<ul>
+
+{% for doc in documents %}
+    <li>{{ doc }}</li>
+{% endfor %}
+
+</ul>
+
+</div>
+
+{% endblock %}
