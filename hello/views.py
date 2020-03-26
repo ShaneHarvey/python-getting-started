@@ -16,9 +16,6 @@ except ImportError:
     from io import StringIO
 
 
-from guppy import hpy
-
-
 host_id = ObjectId()
 
 
@@ -97,7 +94,5 @@ def _get_documents(request):
 def mongodb(request):
     stream = StringIO()
     docs = memory_profiler.profile(_get_documents, stream=stream)(request)
-    hp = hpy()
-    extra = '%s\n\nguppy.hpy.heap():\n%s' % (stream.getvalue(), hp.heap())
-
+    extra = '%s\nEXTRA:\n%s' % (stream.getvalue(), '')
     return render(request, "mongodb.html", {"documents": docs, "extra": extra})
