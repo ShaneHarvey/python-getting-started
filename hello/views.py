@@ -38,6 +38,29 @@ def db(request):
 
     return render(request, "db.html", {"greetings": greetings})
 
+from pymongo import network
+
+def _receive_data_on_socket_mod(sock, length):
+    buf = bytearray(length)
+    i = 0
+    while length:
+        try:
+            chunk = sock.recv(min(length, 16384))
+        except (IOError, OSError) as exc:
+            if network._errno_from_exception(exc) == network.errno.EINTR:
+                continue
+            raise
+        if chunk == b"":
+            raise network.AutoReconnect("connection closed")
+
+        buf[i:i + len(chunk)] = chunk
+        i += len(chunk)
+        length -= len(chunk)
+
+    return bytes(buf)
+
+network._receive_data_on_socket = _receive_data_on_socket_mod
+
 
 def _get_documents(request):
     uri = os.environ.get('MONGODB_URI')
