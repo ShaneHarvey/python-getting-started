@@ -47,6 +47,14 @@ def _get_documents(request):
     limit = 10
     with MongoClient(uri) as client:
         coll = client.heroku.test
+        large_batch_coll = client.heroku.large
+        if large_batch_coll.estimated_document_count() == 0:
+            # Add ~20Mib of data
+            large = 's'*1024*1024
+            large_batch_coll.insert_many(
+                [{'s': large, 'i': i} for i in range(20)])
+        docs = list(large_batch_coll.find(batch_size=1024))
+        del docs
         for i in range(limit):
             coll.insert_one(SON([('mem', get_mem()), ('units', 'bytes'),
                                  ('client', i), ('host', host_id)]))
