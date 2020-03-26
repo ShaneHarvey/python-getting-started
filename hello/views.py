@@ -79,7 +79,7 @@ def _get_documents(request):
     if not uri:
         return ['MONGODB_URI not set!']
 
-    limit = 10
+    limit = 50
     with MongoClient(uri) as client:
         coll = client.heroku.test
         large_batch_coll = client.heroku.large
@@ -90,9 +90,14 @@ def _get_documents(request):
                 [{'s': large, 'i': i} for i in range(20)])
         docs = list(large_batch_coll.find(batch_size=1024))
         del docs
+        last_mem = get_mem()
         for i in range(limit):
-            coll.insert_one(SON([('mem', get_mem()), ('units', 'bytes'),
-                                 ('client', i), ('host', host_id)]))
+            mem = get_mem()
+            delta = mem - last_mem
+            last_mem = mem
+            doc = SON([('mem', mem), ('units', 'bytes'),
+                       ('delta', delta), ('client', i), ('host', host_id)])
+            coll.insert_one(doc)
             # Close all connections.
             client.close()
         documents = list(coll.find(
@@ -101,6 +106,21 @@ def _get_documents(request):
 
     return documents
 
+import socket
+from pymongo.client_session import ClientSession
+from pymongo.pool import Pool
+from pymongo.periodic_executor import PeriodicExecutor
+from threading import Thread
+from bson import CodecOptions
+
+def filter(obj):
+    return isinstance(obj, (socket.socket, Pool, PeriodicExecutor, Thread, CodecOptions))
+
+def get_objs():
+    objs = []
+    objs.extend(objgraph.by_type(socket.socket.__name__))
+    objs.extend(objgraph.by_type(socket._closedsocket.__name__))
+    return objs
 
 def mongodb(request):
     stream = StringIO()
@@ -108,4 +128,6 @@ def mongodb(request):
     extra = '%s\nEXTRA:\n%s' % (stream.getvalue(), '')
     print('objgraph.show_growth(limit=100):')
     objgraph.show_growth(limit=100)
+    # print('objgraph.show_backrefs(get_objs()):')
+    # objgraph.show_backrefs(get_objs())
     return render(request, "mongodb.html", {"documents": docs, "extra": extra})
