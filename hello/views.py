@@ -15,6 +15,17 @@ try:
 except ImportError:
     from io import StringIO
 
+import objgraph
+
+import gc
+
+if hasattr(gc, 'set_debug'):
+    gc.set_debug(
+        gc.DEBUG_UNCOLLECTABLE |
+        getattr(gc, 'DEBUG_OBJECTS', 0) |
+        getattr(gc, 'DEBUG_LEAK', 0) |
+        getattr(gc, 'DEBUG_INSTANCES', 0))
+
 
 host_id = ObjectId()
 
@@ -41,29 +52,29 @@ def db(request):
 
 from pymongo import network
 
-def _receive_data_on_socket_mod(sock, length):
-    buf = bytearray(length)
-    i = 0
-    while length:
-        try:
-            chunk = sock.recv(min(length, 16384))
-        except (IOError, OSError) as exc:
-            if network._errno_from_exception(exc) == network.errno.EINTR:
-                continue
-            raise
-        if chunk == b"":
-            raise network.AutoReconnect("connection closed")
-
-        buf[i:i + len(chunk)] = chunk
-        i += len(chunk)
-        length -= len(chunk)
-
-    return bytes(buf)
-
-network._receive_data_on_socket = _receive_data_on_socket_mod
-
 
 def _get_documents(request):
+    def _receive_data_on_socket_mod(sock, length):
+        buf = bytearray(length)
+        i = 0
+        while length:
+            try:
+                chunk = sock.recv(min(length, 16384))
+            except (IOError, OSError) as exc:
+                if network._errno_from_exception(exc) == network.errno.EINTR:
+                    continue
+                raise
+            if chunk == b"":
+                raise network.AutoReconnect("connection closed")
+
+            buf[i:i + len(chunk)] = chunk
+            i += len(chunk)
+            length -= len(chunk)
+
+        return bytes(buf)
+
+    network._receive_data_on_socket = _receive_data_on_socket_mod
+
     uri = os.environ.get('MONGODB_URI')
     if not uri:
         return ['MONGODB_URI not set!']
@@ -95,4 +106,6 @@ def mongodb(request):
     stream = StringIO()
     docs = memory_profiler.profile(_get_documents, stream=stream)(request)
     extra = '%s\nEXTRA:\n%s' % (stream.getvalue(), '')
+    print('objgraph.show_growth(limit=100):')
+    objgraph.show_growth(limit=100)
     return render(request, "mongodb.html", {"documents": docs, "extra": extra})
