@@ -126,8 +126,10 @@ def mongodb(request):
     stream = StringIO()
     docs = memory_profiler.profile(_get_documents, stream=stream)(request)
     extra = '%s\nEXTRA:\n%s' % (stream.getvalue(), '')
+    resp = render(request, "mongodb.html", {"documents": docs, "extra": extra})
+    del docs
     print('objgraph.show_growth(limit=100):')
     objgraph.show_growth(limit=100)
     # print('objgraph.show_backrefs(get_objs()):')
     # objgraph.show_backrefs(get_objs())
-    return render(request, "mongodb.html", {"documents": docs, "extra": extra})
+    return resp
