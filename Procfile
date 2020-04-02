@@ -1,1 +1,1 @@
-web: gunicorn gettingstarted.wsgi --log-file -
+web: valgrind --tool=memcheck --suppressions=valgrind-python.supp gunicorn gettingstarted.wsgi --log-file -
